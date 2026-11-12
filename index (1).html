@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Garage Prehab Tracker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Prehab">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#eceeec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141618" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one phone-width column, sticky tab strip, stacked cards; plate-stamp condensed caps for headings, rack red for the one action per card. */
+:root{
+  --bg:#eceeec; --card:#fbfcfb; --ink:#1b1e22; --mute:#5c656c; --line:#d2d7d5;
+  --accent:#c4352b; --accent-ink:#ffffff; --steel:#33475b; --good:#1f7a4d; --warn:#a86200;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141618; --card:#1e2124; --ink:#ecece7; --mute:#9aa3a9; --line:#353a3f;
+    --accent:#f0604f; --accent-ink:#1c0c0a; --steel:#a5bbd0; --good:#5cc68d; --warn:#e3a646;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141618; --card:#1e2124; --ink:#ecece7; --mute:#9aa3a9; --line:#353a3f;
+  --accent:#f0604f; --accent-ink:#1c0c0a; --steel:#a5bbd0; --good:#5cc68d; --warn:#e3a646;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;font-variant-numeric:tabular-nums}
+.wrap{max-width:560px;margin:0 auto;padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) calc(48px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+header.top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:18px 0 8px}
+h1{font-family:var(--display);font-weight:700;font-size:28px;letter-spacing:.02em;text-transform:uppercase;margin:0;line-height:1}
+.status{font-size:13px;color:var(--mute);text-align:right}
+nav.tabs{position:sticky;top:0;z-index:5;background:var(--bg);display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px 0 10px}
+nav.tabs a{font-family:var(--display);font-weight:600;font-size:18px;letter-spacing:.04em;text-transform:uppercase;text-align:center;text-decoration:none;color:var(--mute);padding:8px 4px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+nav.tabs a[aria-current="page"]{color:var(--accent-ink);background:var(--steel);border-color:var(--steel)}
+:root[data-theme="dark"] nav.tabs a[aria-current="page"]{color:#141618}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) nav.tabs a[aria-current="page"]{color:#141618}}
+main{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.03em;text-transform:uppercase;margin:0;line-height:1.1;text-wrap:balance}
+h3{font-size:16px;font-weight:600;margin:0}
+p{margin:0}
+.mute{color:var(--mute);font-size:14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.chip{display:inline-block;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--mute);white-space:nowrap}
+.chip.good{color:var(--good);border-color:var(--good)}
+.chip.warn{color:var(--warn);border-color:var(--warn)}
+.chip.bad{color:var(--accent);border-color:var(--accent)}
+button,.btn{font:inherit;font-weight:600;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 12px;cursor:pointer}
+button.primary,.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.done{background:var(--good);border-color:var(--good);color:var(--card)}
+button.small{padding:5px 9px;font-size:13px;font-weight:500}
+button.link{border:0;background:none;padding:0;color:var(--steel);text-decoration:underline;font-weight:500;font-size:14px}
+button:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0;width:100%}
+textarea{min-height:64px;resize:vertical}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute);flex:1 1 120px}
+.datenav{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.datenav strong{font-family:var(--display);font-size:22px;letter-spacing:.03em;text-transform:uppercase}
+.ex{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:8px}
+.ex:first-of-type{border-top:0;padding-top:0}
+.cue{font-size:14px;color:var(--mute)}
+.cue b{color:var(--ink);font-weight:600}
+.sets{display:flex;flex-direction:column;gap:6px}
+.set{display:grid;grid-template-columns:22px 1fr 1fr 44px;gap:6px;align-items:center}
+.set span.n{font-size:13px;color:var(--mute);text-align:center}
+.set button{padding:8px 0;font-size:13px}
+.bar{height:10px;border-radius:999px;background:var(--bg);border:1px solid var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--good)}
+.bar i.over{background:var(--accent)}
+.big{font-family:var(--display);font-weight:700;font-size:34px;line-height:1}
+.meal{display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
+.dots{display:flex;gap:4px}
+.dots i{width:16px;height:16px;border-radius:4px;border:1px solid var(--line);background:var(--bg);display:block}
+.dots i.on{background:var(--good);border-color:var(--good)}
+.dots i.today{outline:2px solid var(--steel);outline-offset:1px}
+.person{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:6px}
+.person:first-of-type{border-top:0;padding-top:0}
+.sched{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;font-size:15px}
+.sched button{justify-self:start}
+ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.note{border-left:3px solid var(--warn);padding-left:10px;font-size:14px}
+details summary{cursor:pointer;font-weight:600}
+details[open] summary{margin-bottom:10px}
+[hidden]{display:none!important}
+#timer{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--steel);color:var(--bg);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:space-between;gap:10px}
+#timer .tl{font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.85}
+#timer .tt{font-family:var(--display);font-weight:700;font-size:38px;line-height:1}
+#timer button{background:transparent;color:var(--bg);border-color:var(--bg)}
+body.timing .wrap{padding-bottom:120px}
+@media (prefers-reduced-motion: no-preference){.bar i{transition:width .3s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Garage Prehab</h1>
+    <div class="status" id="status">Loading your log</div>
+  </header>
+  <nav class="tabs" aria-label="Sections">
+    <a href="#today" data-tab="today">Today</a>
+    <a href="#plan" data-tab="plan">Plan</a>
+    <a href="#food" data-tab="food">Food</a>
+    <a href="#us" data-tab="us">Us</a>
+  </nav>
+  <main id="app"></main>
+</div>
+<div id="timer" hidden role="timer" aria-live="off">
+  <div><div class="tl" id="t-label">Rest</div><div class="tt" id="t-time">0:00</div></div>
+  <div class="row"><button id="t-add">+15 sec</button><button id="t-stop">Stop</button></div>
+</div>
+<script>
+"use strict";
+/* ---------- helpers ---------- */
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clone=o=>JSON.parse(JSON.stringify(o));
+const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const parse=s=>{const a=s.split('-').map(Number);return new Date(a[0],a[1]-1,a[2])};
+const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return ymd(d)};
+const monday=s=>addDays(s,-((parse(s).getDay()+6)%7));
+const fmt=(s,o)=>parse(s).toLocaleDateString('en-US',o||{weekday:'short',month:'short',day:'numeric'});
+const num=v=>{const n=parseFloat(v);return isFinite(n)?n:0};
+const money=n=>(n<0?'-':'')+'$'+Math.abs(n).toFixed(Math.abs(n)%1?2:0);
+const today=()=>ymd(new Date());
+
+/* ---------- the program ---------- */
+const START='2026-11-12', END='2026-12-11', DELOAD='2026-12-07', FIRST_STAKE_WEEK='2026-11-16';
+const EX={
+  zs:{name:'Zercher squat',unit:'lb',cue:'Bar in the crooks of your elbows, hands clasped. 3 seconds down, pause, stand. Stop the set if the knee shifts or gives.',
+      sub:{name:'Spanish squat (band)',cue:'Loop the band around a rack upright and behind both knees. Sit back with shins vertical. 10 to 12 slow reps.'}},
+  zs2:{name:'Zercher squat, lighter',unit:'lb',log:'zs2',cue:'10 to 15% under your Day A weight. Same slow tempo.',
+      sub:{name:'Spanish squat (band)',cue:'Band around an upright and behind both knees, shins vertical, 12 slow reps.'}},
+  pu:{name:'Pull-ups',unit:'+lb',cue:'<b>Grip:</b> overhand, hands just outside your shoulders, thumbs wrapped, on the straight middle of the bar. Stop 1 to 2 reps before failure.',
+      sub:{name:'Band-assisted pull-up',cue:'Loop the band over the bar and put one knee in it. Same overhand grip. If one band is not enough help, do lat pulldowns.'}},
+  row:{name:'Barbell row',unit:'lb',cue:'<b>Grip:</b> overhand, shoulder width. Pull to your lower ribs.',
+      sub:{name:'Banded row',cue:'Band around an upright at belly height. Pull elbows back, 15 reps.'}},
+  hang:{name:'Dead hang',unit:'+lb',reps:'sec',cue:'<b>Grip:</b> overhand, same width as your pull-ups. Step down from the bar, never drop.',
+      sub:{name:'Feet-assisted hang',cue:'Toes on a box or the floor, taking part of your weight.'}},
+  epu:{name:'Explosive pull-ups',unit:'+lb',cue:'<b>Grip:</b> overhand, a thumb-length wider than your shoulders, knuckles rolled over the top of the bar. Pull the bar to your lower chest. No kipping.',
+      sub:{name:'Banded explosive pull-up',cue:'Knee in the band. Pull as high and fast as you can, lower under control.'}},
+  sbd:{name:'Straight-bar dips',unit:'+lb',cue:'Barbell racked at waist height. <b>Grip:</b> overhand, shoulder width. Lean your chest over the bar and press to lockout.',
+      sub:{name:'Feet-assisted bar dip',cue:'Lower the bar a notch and keep your toes on the floor. Push with your legs only as much as you need.'}},
+  tr:{name:'Banded muscle-up transitions',unit:'',cue:'Bar at chest height, feet on the floor, band looped from the bar under your hips. Pull to your chest, then roll wrists and chest over the bar into the dip. <b>Grip:</b> overhand, same as explosive pull-ups.',
+      sub:{name:'Banded straight-arm pulldown',cue:'Band over the pull-up bar. Arms straight, sweep your hands to your hips. 12 reps.'}},
+  lat:{name:'Lat pulldown',unit:'lb',cue:'<b>Grip:</b> overhand, slightly wider than your pull-up grip. Pull to your upper chest.',
+      sub:{name:'Banded pulldown',cue:'Band over the bar, kneel, pull elbows to your ribs. 15 reps.'}},
+  push:{name:'Push-ups',unit:'',cue:'Stop 1 to 2 reps before failure.',
+      sub:{name:'Incline push-up',cue:'Hands on the barbell racked at hip height.'}},
+  neg:{name:'Pull-up negatives',unit:'+lb',cue:'<b>Grip:</b> overhand for sets 1 and 2, underhand for sets 3 and 4 to spare your elbows. Step up from a box, lower for 5 seconds, step off.',
+      sub:{name:'Band-assisted negative',cue:'Knee in the band, same 5-second lower.'}},
+  hold:{name:'Zercher hold',unit:'lb',reps:'sec',cue:'Unrack and stand tall, ribs down. Take slow steps on the mat only if the knee feels stable.',
+      sub:{name:'Banded Pallof press',cue:'Band on an upright at chest height. Press out and hold 3 seconds, 10 reps each side.'}},
+  hkr:{name:'Hanging knee raises',unit:'',cue:'<b>Grip:</b> overhand. No swing. Step down after each set.',
+      sub:{name:'Lying knee raise',cue:'On the mat, lower back pressed down, 12 reps.'}}
+};
+const REST={zs:150,zs2:120,pu:120,epu:120,neg:120,sbd:90,row:90};
+const WORK={hang:30,hold:30};
+const IDEAS={
+  knee:{name:'Knee prehab, 15 min',note:'Standard pre-surgery ACL work. Clear it with your PT first.',items:['Quad sets: 3 x 10, hold 5 sec','Straight leg raises: 3 x 10 each leg','Heel slides: 2 x 15','Glute bridges: 3 x 12','Spanish squat hold with band: 3 x 30 sec','Calf raises holding the rack: 3 x 15']},
+  band:{name:'Band-only upper body, 20 min',items:['Banded row: 4 x 15','Banded pulldown: 4 x 12','Band pull-aparts: 3 x 20','Banded push-ups: 3 x max - 2','Banded curls: 3 x 15','Banded triceps pressdown: 3 x 15']},
+  grip:{name:'Grip and hang practice, 10 min',items:['Dead hang: 4 x 20-30 sec','Scapular pull-ups: 3 x 8','Top-of-pull-up hold from a box: 4 x 10 sec','Plate pinch hold: 3 x 30 sec']},
+  core:{name:'Core, 10 min',items:['Dead bug: 3 x 10 each side','Side plank: 3 x 20 sec each side','Banded Pallof press: 3 x 10 each side','Lying knee raise: 3 x 12']},
+  walk:{name:'Walking pad intervals, 30 min',items:['5 min easy','10 rounds: 1 min brisk, 1 min easy','5 min easy']},
+  body:{name:'No-equipment full body, 20 min',items:['Sit-to-stand from a chair: 3 x 12','Incline push-ups: 3 x 10','Glute bridges: 3 x 15','Bird dog: 3 x 8 each side','Plank: 3 x 30 sec']}
+};
+const mmss=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+const SESS={
+  A:{title:'Day A',sub:'Zercher strength',ex:[['zs',4,'6'],['pu',5,'max - 2'],['row',3,'8'],['hang',3,'20-30 sec']]},
+  B:{title:'Day B',sub:'Muscle-up skill',ex:[['epu',6,'2-3'],['sbd',4,'5-8'],['tr',4,'3-5'],['lat',3,'10'],['push',3,'max - 2']]},
+  C:{title:'Day C',sub:'Volume',ex:[['zs2',3,'8'],['neg',4,'3'],['hold',3,'30 sec'],['hkr',3,'10']]},
+  S:{title:'Optional skill day',sub:'Short practice, then walk',ex:[['epu',4,'2'],['tr',3,'3']]},
+  W:{title:'Walk day',sub:'45 to 60 minutes on the pad',ex:[]}
+};
+function sessionFor(s){
+  if(s<START||s>END) return null;
+  if(s==='2026-11-12') return {k:'A',deload:false};
+  if(s==='2026-11-13') return {k:'B',deload:false};
+  const k={1:'A',2:'W',3:'B',4:'S',5:'C'}[parse(s).getDay()];
+  return k?{k,deload:s>=DELOAD}:null;
+}
+
+/* ---------- state ---------- */
+const LS='garage-prehab-v1';
+const me={profile:null,days:{}};
+const dirty={}, ver={};
+let connecting=false;
+const others={};
+let mode='loading', db=null, uid=null, sample=null, canImg=false, writeBlocked=false, saveNote='';
+let cur=today(), tab='today', pending=null, foodErr='';
+const blankDay=()=>({done:false,sets:{},swap:{},note:'',walk:'',weight:'',meals:[],idea:''});
+const norm=d=>Object.assign(blankDay(),d||{});
+const day=s=>me.days[s]||(me.days[s]=blankDay());
+function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LS)||'null');if(j){me.profile=j.profile||null;Object.keys(j.days||{}).forEach(k=>me.days[k]=norm(j.days[k]));Object.assign(dirty,j.dirty||{});}}catch(e){}}
+function cacheLocal(){try{localStorage.setItem(LS,JSON.stringify({profile:me.profile,days:me.days,dirty}));}catch(e){}}
+
+/* ---------- saving ---------- */
+const timers={}, chains={};
+function push(key,path,get){
+  const v=ver[key];
+  chains[path]=(chains[path]||Promise.resolve()).then(()=>db.doc(path).set(clone(get()))).then(()=>{if(ver[key]===v){delete dirty[key];cacheLocal();}saveNote='';setStatus();}).catch(e=>{
+    const c=e&&e.code;
+    if(c==='invalid_argument'||c==='not_granted'||c==='revoked'){mode='local';writeBlocked=true;render();}
+    else{saveNote='Not synced yet. Your entries are saved on this phone.';setStatus();}
+  });
+}
+function saveDay(s){ghQueue();dirty[s]=1;ver[s]=(ver[s]||0)+1;cacheLocal();if(mode!=='cloud')return;clearTimeout(timers[s]);timers[s]=setTimeout(()=>push(s,'people/'+uid+'/days/'+s,()=>me.days[s]),700);}
+function saveProfile(){ghQueue();dirty._p=1;ver._p=(ver._p||0)+1;cacheLocal();if(mode!=='cloud')return;clearTimeout(timers._p);timers._p=setTimeout(()=>push('_p','people/'+uid,()=>me.profile),300);}
+function flush(){
+  if(mode!=='cloud')return;
+  Object.keys(dirty).forEach(k=>{
+    if(k==='_p'){if(me.profile)push('_p','people/'+uid,()=>me.profile);}
+    else if(me.days[k])push(k,'people/'+uid+'/days/'+k,()=>me.days[k]);
+  });
+}
+function setStatus(){
+  const el=document.getElementById('status');
+  el.textContent=(window.claude&&navigator.onLine===false?'Offline. Saving on this phone, syncs when you reconnect':'')||saveNote||(mode==='cloud'?'Synced to your shared log':mode==='loading'?'Loading your log':'Saved on this phone');
+}
+const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r({code:'unavailable'}),ms))]);
+
+async function connect(){
+  if(connecting||db)return;
+  connecting=true;
+  try{await connect2();}finally{connecting=false;}
+}
+async function connect2(){
+  if(!window.claude||!claude.use){mode='local';return render();}
+  let d=null,u=null,s=null;
+  try{[d,u,s]=await Promise.all([claude.use('db'),claude.use('user'),claude.use('sample')]);}catch(e){}
+  if(s){sample=s;try{const l=await s.limits();canImg=!!(l&&l.images);}catch(e){}}
+  let id=null;try{id=u?await u.id():null;}catch(e){}
+  if(!d||!id){mode='local';return render();}
+  db=d;uid=id;
+  try{
+    const [ps,ds]=await withTimeout(Promise.all([db.doc('people/'+uid).get(),db.collection('people/'+uid+'/days').get()]),10000);
+    if(ps.exists){
+      if(!(dirty._p&&me.profile))me.profile=clone(ps.data());
+      const merged={};
+      ds.docs.forEach(x=>{merged[x.id]=norm(clone(x.data()));});
+      Object.keys(dirty).forEach(k=>{if(k!=='_p'&&me.days[k])merged[k]=me.days[k];});
+      Object.keys(me.days).forEach(k=>delete me.days[k]);
+      Object.assign(me.days,merged);
+      mode='cloud';cacheLocal();flush();
+    }else{
+      mode='cloud';
+      if(me.profile){dirty._p=1;Object.keys(me.days).forEach(k=>{dirty[k]=1;});flush();}
+    }
+  }catch(e){db=null;uid=null;mode='local';return render();}
+  db.collection('people').onSnapshot(snap=>{
+    snap.docs.forEach(x=>{
+      if(x.id===uid)return;
+      const o=others[x.id]||(others[x.id]={profile:null,days:{},sub:false});
+      o.profile=clone(x.data());
+      if(!o.sub){o.sub=true;db.collection('people/'+x.id+'/days').onSnapshot(s2=>{o.days={};s2.docs.forEach(y=>{o.days[y.id]=norm(clone(y.data()));});softRender();},()=>{});}
+    });
+    softRender();
+  },()=>{});
+  render();
+}
+function softRender(){
+  if(tab!=='us')return;
+  const a=document.activeElement;
+  if(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))return;
+  render();
+}
+
+/* ---------- views ---------- */
+function dateNav(){
+  const t=today();
+  return `<div class="datenav">
+    <button class="small" data-act="prev" aria-label="Previous day">&larr;</button>
+    <div class="row"><strong>${esc(fmt(cur))}</strong>${cur===t?'<span class="chip good">Today</span>':`<button class="link" data-act="gotoday">Go to today</button>`}</div>
+    <button class="small" data-act="next" aria-label="Next day">&rarr;</button></div>`;
+}
+function lastFor(id,before){
+  const key=EX[id].log||id;
+  const ks=Object.keys(me.days).filter(k=>k<before).sort().reverse();
+  for(const k of ks){
+    const d=me.days[k];
+    for(const cand of [id,key==='zs2'?'zs2':id]){
+      const rows=(d.sets||{})[cand];
+      if(rows&&!(d.swap||{})[cand]){const r=rows.filter(x=>x&&(x.w||x.r));if(r.length){const b=r[r.length-1];return `${fmt(k,{month:'short',day:'numeric'})}: ${esc(b.w||'bodyweight')} x ${esc(b.r||'?')}`;}}
+    }
+  }
+  return '';
+}
+function exHTML(d,[id,sets,reps],deload){
+  const e=EX[id], sw=!!d.swap[id], show=sw?e.sub:e;
+  const rows=d.sets[id]||[], n=Math.max(deload?Math.max(2,sets-1):sets,rows.length);
+  const last=sw?'':lastFor(id,cur);
+  let h=`<div class="ex"><div class="row between"><h3>${esc(show.name)}</h3><span class="chip">${deload?Math.max(2,sets-1):sets} x ${esc(reps)}</span></div>
+  <p class="cue">${show.cue}</p>
+  ${last?`<p class="mute">Last time, ${last}</p>`:''}
+  ${!sw&&suggest(id,deload)?`<p class="mute">${esc(suggest(id,deload))}</p>`:''}
+  <div class="sets">`;
+  for(let i=0;i<n;i++){
+    const r=rows[i]||{};
+    h+=`<div class="set"><span class="n">${i+1}</span>
+      <input id="w-${id}-${i}" inputmode="decimal" placeholder="${sw?'band':esc(e.unit||'lb')}" value="${esc(r.w||'')}" data-ex="${id}" data-i="${i}" data-f="w" aria-label="${esc(show.name)} set ${i+1} weight">
+      <input id="r-${id}-${i}" inputmode="numeric" placeholder="${esc(e.reps||'reps')}" value="${esc(r.r||'')}" data-ex="${id}" data-i="${i}" data-f="r" aria-label="${esc(show.name)} set ${i+1} ${esc(e.reps||'reps')}">
+      <button class="${r.ok?'done':''}" data-act="ok" data-ex="${id}" data-i="${i}" aria-pressed="${r.ok?'true':'false'}">${r.ok?'Done':'Log'}</button></div>`;
+  }
+  h+=`</div><div class="row"><button class="small" data-act="addset" data-ex="${id}">Add a set</button>
+    <button class="small" data-act="rest" data-ex="${id}">Rest ${mmss(REST[id]||75)}</button>
+    ${WORK[id]&&!sw?`<button class="small" data-act="work" data-ex="${id}">Start ${WORK[id]} sec timer</button>`:''}
+    <button class="small" data-act="swap" data-ex="${id}">${sw?'Back to '+esc(e.name):'Swap: '+esc(e.sub.name)}</button></div></div>`;
+  return h;
+}
+function suggest(id,deload){
+  if(id!=='zs'&&id!=='zs2')return '';
+  const ks=Object.keys(me.days).filter(k=>k<cur).sort().reverse(), r5=x=>Math.round(x/5)*5;
+  for(const k of ks){
+    const d=me.days[k], rows=(d.sets||{}).zs;
+    if(rows&&!(d.swap||{}).zs){
+      const ws=rows.map(r=>num(r&&r.w)).filter(x=>x>0);
+      if(ws.length){const w=Math.max(...ws);const s=id==='zs'?(deload?r5(w*0.7):w+5):r5(w*(deload?0.6:0.875));
+        return 'Suggested today: '+s+' lb, based on '+w+' lb on '+fmt(k,{month:'short',day:'numeric'})+(id==='zs'&&!deload?'. Only go up if the knee was pain-free.':'.');}
+    }
+  }
+  return '';
+}
+function ideaCard(d,hasDone){
+  const I=IDEAS[d.idea];
+  let h=`<section class="card"><div class="row between"><h2>${I?'Extra work':'Workout ideas'}</h2>${I&&!hasDone&&d.done?'<span class="chip good">Done</span>':''}</div>`;
+  if(I){
+    h+=`<h3>${esc(I.name)}</h3>${I.note?`<p class="note">${esc(I.note)}</p>`:''}<ul>${I.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+      <div class="row"><button class="small" data-act="rest" data-secs="60">Rest 1:00</button><button class="small" data-act="work" data-secs="30">30 sec timer</button><button class="small" data-act="idea" data-key="">Remove</button></div>
+      ${hasDone?'':`<button class="${d.done?'done':'primary'}" data-act="done">${d.done?'Workout done. Tap to undo':'Mark workout done'}</button>`}`;
+  }else{
+    h+=`<p class="mute">Short sessions for a specific goal. Add one to this day as extra work or as your workout on an off day.</p>
+      <div class="row"><select id="idea-pick" aria-label="Workout idea" style="flex:1 1 180px">${Object.keys(IDEAS).map(k=>`<option value="${k}">${esc(IDEAS[k].name)}</option>`).join('')}</select><button data-act="idea">Add to this day</button></div>`;
+  }
+  return h+'</section>';
+}
+function setupCard(){
+  const p=me.profile||{}, first=!me.profile, anyOther=Object.values(others).some(o=>o.profile);
+  const plan=p.plan||(anyOther?'custom':'program');
+  return `<section class="card"><h2>${first?'Set up your log':'Your settings'}</h2>
+    ${first?'<p class="mute">Takes ten seconds. Each person who opens this page gets their own log.</p>':''}
+    <div class="row">
+      <label class="f" for="pf-name">Your first name<input id="pf-name" value="${esc(p.name||'')}" autocomplete="given-name" maxlength="24"></label>
+      <label class="f" for="pf-plan">Workouts<select id="pf-plan"><option value="program"${plan==='program'?' selected':''}>Zercher and muscle-up plan</option><option value="custom"${plan==='custom'?' selected':''}>My own workouts</option></select></label>
+    </div>
+    <div class="row">
+      <label class="f" for="pf-target">Workouts per week<select id="pf-target">${[2,3,4].map(n=>`<option${(p.target||3)==n?' selected':''}>${n}</option>`).join('')}</select></label>
+      <label class="f" for="pf-stake">Weekly stake, dollars<input id="pf-stake" inputmode="decimal" value="${esc(p.stake??20)}"></label>
+    </div>
+    <div class="row"><button class="primary" data-act="saveprofile">${first?'Start my log':'Save settings'}</button></div></section>`;
+}
+function viewToday(){
+  const p=me.profile, d=day(cur), s=(p&&p.plan==='custom')?null:sessionFor(cur);
+  let h='';
+  if(!p) h+=setupCard();
+  h+=`<section class="card">${dateNav()}`;
+  if(p&&p.plan==='custom'){
+    h+=`<div class="row between"><h2>Your workout</h2>${d.done?'<span class="chip good">Done</span>':''}</div>
+      <label class="f" for="d-note">What did you do?<textarea id="d-note" data-day="note" placeholder="Example: 40 min strength class, or 3 mile run">${esc(d.note)}</textarea></label>
+      <button class="${d.done?'done':'primary'}" data-act="done">${d.done?'Workout done. Tap to undo':'Mark workout done'}</button>`;
+  }else if(!s){
+    const nxt=nextSession(cur);
+    h+=`<h2>${cur<START?'Plan starts Thu, Nov 12':cur>END?'Plan complete':'Rest day'}</h2>
+      <p class="mute">${cur>END?'Surgery is Dec 15. Keep walking if the knee allows and eat well.':nxt?'Next up: '+esc(SESS[nxt.k].title)+', '+esc(SESS[nxt.k].sub.toLowerCase())+' on '+esc(fmt(nxt.s))+'.':''} Weekend walks are optional and help the scale most.</p>`;
+  }else{
+    const S=SESS[s.k];
+    h+=`<div class="row between"><div><h2>${esc(S.title)}</h2><p class="mute">${esc(S.sub)}</p></div>
+      <div class="row">${s.deload?'<span class="chip warn">Deload, about 70%</span>':''}${s.k==='S'?'<span class="chip">Optional</span>':''}${d.done?'<span class="chip good">Done</span>':''}</div></div>`;
+    S.ex.forEach(x=>{h+=exHTML(d,x,s.deload);});
+    if(s.k!=='W') h+=`<button class="${d.done?'done':'primary'}" data-act="done">${d.done?'Workout done. Tap to undo':'Mark workout done'}</button>
+      <label class="f" for="d-note">Notes<textarea id="d-note" data-day="note" placeholder="How did the knee feel?">${esc(d.note)}</textarea></label>`;
+  }
+  const hasDone=!!(p&&p.plan==='custom')||!!(s&&s.k!=='W');
+  h+=`</section>${ideaCard(d,hasDone)}<section class="card"><h2>Walk and weigh-in</h2><div class="row">
+      <label class="f" for="d-walk">Walking pad, minutes<input id="d-walk" inputmode="numeric" data-day="walk" value="${esc(d.walk)}" placeholder="${s&&s.k==='W'?'45-60':'20-30'}"></label>
+      <label class="f" for="d-weight">Morning weight, lb<input id="d-weight" inputmode="decimal" data-day="weight" value="${esc(d.weight)}" placeholder="247"></label></div>
+      ${weightLine()}</section>`;
+  return h;
+}
+function nextSession(s){for(let i=1;i<40;i++){const n=addDays(s,i),x=sessionFor(n);if(x&&x.k!=='W'&&x.k!=='S')return{k:x.k,s:n};}return null;}
+function weightLine(){
+  const ks=Object.keys(me.days).filter(k=>num(me.days[k].weight)>0).sort();
+  if(ks.length<2)return '<p class="mute">Log two weigh-ins to see your change.</p>';
+  const a=num(me.days[ks[0]].weight),b=num(me.days[ks[ks.length-1]].weight),diff=b-a;
+  return `<p class="mute">${esc(fmt(ks[0],{month:'short',day:'numeric'}))}: ${a} lb. Latest: ${b} lb. Change: <b style="color:var(--ink)">${diff>0?'+':''}${diff.toFixed(1)} lb</b></p>`;
+}
+function viewPlan(){
+  let rows='';
+  for(let s=START;s<=END;s=addDays(s,1)){
+    const x=sessionFor(s);if(!x)continue;
+    const d=me.days[s],S=SESS[x.k];
+    rows+=`<span>${esc(fmt(s))}</span><button class="link" data-act="goto" data-date="${s}">${esc(S.title)}${x.k==='A'||x.k==='B'||x.k==='C'?', '+esc(S.sub.toLowerCase()):''}</button>
+      <span>${d&&d.done?'<span class="chip good">Done</span>':x.deload&&x.k!=='W'?'<span class="chip warn">Deload</span>':x.k==='S'?'<span class="chip">Optional</span>':''}</span>`;
+  }
+  return `<section class="card"><h2>Nov 12 to Dec 11</h2><p class="mute">Monday, Wednesday, Friday lifts. Tuesday walk. Thursday is optional. No weekends. Tap a day to open it.</p><div class="sched">${rows}</div></section>
+  <section class="card"><h2>Pull-up grips</h2><ul>
+    <li><b>Everything for the muscle-up:</b> overhand grip, hands just outside shoulder width, on the straight middle of the bar.</li>
+    <li><b>Explosive pull-ups and transitions:</b> a thumb-length wider, knuckles rolled over the top of the bar so your wrists are already halfway turned.</li>
+    <li><b>Negatives:</b> overhand for the first two sets, underhand for the last two to give your elbows a break.</li>
+    <li><b>Lat pulldown:</b> overhand, a little wider than your pull-up grip.</li>
+    <li><b>Skip for now:</b> very wide grips, the angled ends of the bar, and mixed grip.</li></ul></section>
+  <section class="card"><h2>Zercher progression</h2><ul>
+    <li>Week of Nov 12: find a weight where 6 reps leaves 3 in the tank.</li>
+    <li>Nov 16 to Dec 4: add 5 to 10 lb each Monday if the knee was pain-free and stable.</li>
+    <li>Dec 7 to 11: drop to about 70% and one fewer set.</li></ul>
+    <p class="note">Get your surgeon or PT to okay loaded squats on the injured knee. No jumping, no kipping, and step down from the bar instead of dropping. Any exercise has a band or bodyweight swap on the Today tab.</p></section>
+  <section class="card"><h2>Walking pad</h2><ul><li>Lift days: 20 to 30 minutes after training.</li><li>Tuesday and Thursday: 45 to 60 minutes.</li><li>Weekends: optional.</li></ul></section>`;
+}
+function totals(d){return (d.meals||[]).reduce((a,m)=>({k:a.k+num(m.kcal),p:a.p+num(m.p)}),{k:0,p:0});}
+function viewFood(){
+  const p=me.profile||{}, d=day(cur), t=totals(d), goal=num(p.kcalGoal), pg=num(p.proteinGoal);
+  const pct=goal?Math.min(100,Math.round(t.k/goal*100)):0;
+  let h=`<section class="card">${dateNav()}
+    <div class="row between"><div><div class="big">${Math.round(t.k)}</div><p class="mute">${goal?'of '+goal+' calories':'calories eaten'}</p></div>
+    <div style="text-align:right"><div class="big">${Math.round(t.p)} g</div><p class="mute">${pg?'of '+pg+' g protein':'protein'}</p></div></div>
+    ${goal?`<div class="bar" role="img" aria-label="${pct} percent of calorie goal"><i class="${t.k>goal?'over':''}" style="width:${pct}%"></i></div><p class="mute">${t.k>goal?Math.round(t.k-goal)+' over your goal':Math.round(goal-t.k)+' left today'}</p>`:'<p class="mute">Set a calorie goal at the bottom of this tab.</p>'}
+    </section>
+    <section class="card"><h2>Add a meal</h2>`;
+  if(sample){
+    h+=`${canImg?`<label class="btn primary" for="photo" style="text-align:center">Take or choose a photo</label><input class="vh" type="file" id="photo" accept="image/*">`:''}
+      <div class="row"><input id="desc" placeholder="${canImg?'Or describe it: 2 eggs, toast, coffee':'Describe it: 2 eggs, toast, coffee'}" aria-label="Describe the meal" style="flex:1 1 180px"><button data-act="estimate">Estimate</button></div>
+      <p class="mute">Claude estimates calories and macros from the photo or description. Estimates from photos can be off by 20% or more, so adjust before saving. Photos are not stored.</p>`;
+  }else if(mode!=='loading'){
+    h+=`<p class="mute">Photo estimates need the Claude-hosted version of this tracker. Here, add meals by hand below.</p>`;
+  }
+  if(foodErr)h+=`<p class="note">${esc(foodErr)}</p>`;
+  if(pending&&pending.loading)h+=`<p class="mute" aria-live="polite">Estimating. This can take up to a minute.</p>`;
+  if(pending&&!pending.loading){
+    h+=`<div class="ex"><div class="row between"><h3>Check the estimate</h3><span class="chip ${pending.confidence==='high'?'good':pending.confidence==='low'?'bad':'warn'}">${esc(pending.confidence||'medium')} confidence</span></div>
+      ${pending.items.length?`<ul>${pending.items.map(i=>`<li>${esc(i.name)}${i.portion?', '+esc(i.portion):''}: ${Math.round(num(i.kcal))} cal</li>`).join('')}</ul>`:''}
+      ${pending.note?`<p class="mute">${esc(pending.note)}</p>`:''}
+      <label class="f" for="pm-name">Meal<input id="pm-name" value="${esc(pending.name)}"></label>
+      <div class="row"><label class="f" for="pm-k">Calories<input id="pm-k" inputmode="numeric" value="${Math.round(pending.kcal)}"></label>
+      <label class="f" for="pm-p">Protein g<input id="pm-p" inputmode="numeric" value="${Math.round(pending.p)}"></label>
+      <label class="f" for="pm-c">Carbs g<input id="pm-c" inputmode="numeric" value="${Math.round(pending.c)}"></label>
+      <label class="f" for="pm-f">Fat g<input id="pm-f" inputmode="numeric" value="${Math.round(pending.f)}"></label></div>
+      <div class="row"><button class="primary" data-act="addpending">Add to ${cur===today()?'today':esc(fmt(cur))}</button><button data-act="discard">Discard</button></div></div>`;
+  }
+  h+=`<details${sample?'':' open'}><summary>Add by hand</summary><div class="row">
+      <label class="f" for="mm-name">Meal<input id="mm-name" placeholder="Chicken and rice"></label>
+      <label class="f" for="mm-k">Calories<input id="mm-k" inputmode="numeric"></label>
+      <label class="f" for="mm-p">Protein g<input id="mm-p" inputmode="numeric"></label></div>
+      <div class="row" style="margin-top:8px"><button data-act="addmanual">Add meal</button></div></details></section>
+    <section class="card"><h2>${cur===today()?"Today's meals":'Meals on '+esc(fmt(cur))}</h2>
+    ${d.meals.length?d.meals.map((m,i)=>`<div class="meal"><div><b>${esc(m.name||'Meal')}</b><p class="mute">${Math.round(num(m.kcal))} cal, ${Math.round(num(m.p))} g protein${m.c||m.f?', '+Math.round(num(m.c))+' g carbs, '+Math.round(num(m.f))+' g fat':''}</p></div><button class="small" data-act="delmeal" data-i="${i}">Remove</button></div>`).join(''):'<p class="mute">Nothing logged yet.</p>'}
+    </section>${goalCard()}`;
+  return h;
+}
+function goalCard(){
+  const p=me.profile||{}, c=p.calc||{};
+  const sel=(id,opts,v)=>`<select id="${id}">${opts.map(o=>`<option value="${o[0]}"${String(v)===String(o[0])?' selected':''}>${o[1]}</option>`).join('')}</select>`;
+  return `<section class="card"><h2>Calorie goal</h2>
+    <p class="mute">${p.kcalGoal?'Current goal: '+esc(p.kcalGoal)+' calories and '+esc(p.proteinGoal||0)+' g protein a day.':'Fill this in once to get a daily target.'}</p>
+    <div class="row"><label class="f" for="gc-sex">Sex${sel('gc-sex',[['m','Male'],['f','Female']],c.sex||'m')}</label>
+    <label class="f" for="gc-age">Age<input id="gc-age" inputmode="numeric" value="${esc(c.age||'')}"></label>
+    <label class="f" for="gc-w">Weight, lb<input id="gc-w" inputmode="decimal" value="${esc(c.w||'')}"></label></div>
+    <div class="row"><label class="f" for="gc-ft">Height, ft<input id="gc-ft" inputmode="numeric" value="${esc(c.ft||'')}"></label>
+    <label class="f" for="gc-in">Height, in<input id="gc-in" inputmode="numeric" value="${esc(c.inch||'')}"></label>
+    <label class="f" for="gc-pace">Goal${sel('gc-pace',[[750,'Lose about 1.5 lb a week'],[500,'Lose about 1 lb a week'],[0,'Maintain']],c.pace??750)}</label></div>
+    <div class="row"><button data-act="calc">Calculate and save goal</button></div>
+    <p class="mute">Uses the Mifflin-St Jeor equation with light activity. Before surgery, a steady deficit with high protein beats a crash diet.</p></section>`;
+}
+function everyone(){
+  const list=[];
+  if(me.profile)list.push({id:uid||'me',profile:me.profile,days:me.days,self:true});
+  Object.keys(others).forEach(id=>{if(others[id].profile)list.push({id,profile:others[id].profile,days:others[id].days});});
+  return list;
+}
+function weekCount(p,mon){let n=0,food=0;const on=[];for(let i=0;i<7;i++){const d=p.days[addDays(mon,i)];const ok=!!(d&&d.done);on.push(ok);if(ok)n++;if(d&&d.meals&&d.meals.length)food++;}return{n,food,on};}
+function viewUs(){
+  const ppl=everyone(), t=today(), mon=monday(t);
+  let h='';
+  if(writeBlocked)h+=`<section class="card"><p class="note">This page can't save your entries to the shared log, so they stay on this phone. Ask the page owner to invite you by email as an Editor.</p></section>`;
+  h+=`<section class="card"><div class="row between"><h2>This week</h2><span class="chip">${esc(fmt(mon,{month:'short',day:'numeric'}))} to ${esc(fmt(addDays(mon,6),{month:'short',day:'numeric'}))}</span></div>`;
+  if(!ppl.length)h+=`<p class="mute">Set up your log below to appear here.</p>`;
+  ppl.forEach(p=>{
+    const w=weekCount(p,mon), tg=num(p.profile.target)||3, left=tg-w.n;
+    const daysLeft=7-((parse(t).getDay()+6)%7);
+    h+=`<div class="person"><div class="row between"><h3>${esc(p.profile.name||'Someone')}${p.self?' (you)':''}</h3>
+      <span class="chip ${left<=0?'good':left>daysLeft?'bad':'warn'}">${left<=0?'Target hit':left+' to go'}</span></div>
+      <div class="row between"><div class="dots" role="img" aria-label="${w.n} workouts this week">${w.on.map((o,i)=>`<i class="${o?'on':''}${addDays(mon,i)===t?' today':''}"></i>`).join('')}</div>
+      <span class="mute">${w.n} of ${tg} workouts</span></div>
+      <p class="mute">Food logged ${w.food} of 7 days. Stake ${money(num(p.profile.stake))}.</p></div>`;
+  });
+  h+=`</section><section class="card"><h2>The bet</h2>
+    <p>Each of you puts in your stake on Monday. Miss your weekly workout target and your stake goes to whoever hit theirs. If everyone hits, or everyone misses, you each keep your own.</p>
+    <p class="mute">Stakes start the week of Nov 16. This page keeps score only. Settle up with each other.</p>${ledger(ppl,t)}</section>`;
+  if(ppl.length<2)h+=`<section class="card"><h2>Your partner</h2><p>Send her the same link and have her add it to her home screen. Once you both turn on Backup to GitHub with the same repository, you each show up on the other's phone here.</p></section>`;
+  h+=setupCard();
+  if(!window.claude)h+=backupCard();
+  return h;
+}
+function ledger(ppl,t){
+  const bal={};ppl.forEach(p=>bal[p.id]=0);
+  let lines='';
+  for(let mon=FIRST_STAKE_WEEK;addDays(mon,6)<t;mon=addDays(mon,7)){
+    const inw=ppl.filter(p=>(p.profile.joined||'0')<=mon);
+    if(inw.length<2)continue;
+    const res=inw.map(p=>{const n=weekCount(p,mon).n;return{p,n,hit:n>=(num(p.profile.target)||3)};});
+    const hit=res.filter(r=>r.hit),miss=res.filter(r=>!r.hit);
+    let out='Everyone keeps their stake.';
+    if(hit.length&&miss.length){
+      out=miss.map(m=>{const st=num(m.p.profile.stake);bal[m.p.id]-=st;hit.forEach(x=>bal[x.p.id]+=st/hit.length);return esc(m.p.profile.name||'Someone')+' pays '+money(st);}).join(', ')+' to '+hit.map(x=>esc(x.p.profile.name||'Someone')).join(' and ')+'.';
+    }
+    lines+=`<div class="meal"><div><b>${esc(fmt(mon,{month:'short',day:'numeric'}))} to ${esc(fmt(addDays(mon,6),{month:'short',day:'numeric'}))}</b>
+      <p class="mute">${res.map(r=>esc(r.p.profile.name||'Someone')+' '+r.n+'/'+(num(r.p.profile.target)||3)).join(', ')}. ${out}</p></div></div>`;
+  }
+  if(!lines)return '<p class="mute">No finished weeks yet. The first result posts after Sunday, Nov 22.</p>';
+  return `<div class="row">${ppl.map(p=>`<span class="chip ${bal[p.id]>0?'good':bal[p.id]<0?'bad':''}">${esc(p.profile.name||'Someone')} ${bal[p.id]>0?'+':''}${money(bal[p.id])}</span>`).join('')}</div>${lines}`;
+}
+function render(){
+  setStatus();
+  document.querySelectorAll('nav.tabs a').forEach(a=>{if(a.dataset.tab===tab)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+  document.getElementById('app').innerHTML=tab==='plan'?viewPlan():tab==='food'?viewFood():tab==='us'?viewUs():viewToday();
+}
+function route(){const h=(location.hash||'').replace('#','');tab=['today','plan','food','us'].includes(h)?h:'today';render();if(tab==='us')ghPeers();}
+
+/* ---------- events ---------- */
+const app=document.getElementById('app');
+const val=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+app.addEventListener('input',ev=>{
+  const t=ev.target, d=day(cur);
+  if(t.dataset.f){const id=t.dataset.ex,i=+t.dataset.i;const rows=d.sets[id]||(d.sets[id]=[]);while(rows.length<=i)rows.push({});rows[i][t.dataset.f]=t.value;saveDay(cur);}
+  else if(t.dataset.day){d[t.dataset.day]=t.value;saveDay(cur);}
+});
+app.addEventListener('change',ev=>{
+  const t=ev.target;
+  if(t.id==='photo'&&t.files&&t.files[0])estimate(t.files[0],val('desc'));
+  if(t.dataset.day==='weight')render();
+});
+app.addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act, d=day(cur);
+  if(a==='prev'){cur=addDays(cur,-1);pending=null;}
+  else if(a==='next'){cur=addDays(cur,1);pending=null;}
+  else if(a==='gotoday'){cur=today();}
+  else if(a==='goto'){cur=b.dataset.date;location.hash='#today';tab='today';}
+  else if(a==='ok'){const id=b.dataset.ex,i=+b.dataset.i;const rows=d.sets[id]||(d.sets[id]=[]);while(rows.length<=i)rows.push({});rows[i].ok=!rows[i].ok;saveDay(cur);if(rows[i].ok)startTimer([{label:'Rest',secs:REST[id]||75}]);}
+  else if(a==='addset'){const id=b.dataset.ex,x=(SESS[(sessionFor(cur)||{}).k]||{ex:[]}).ex.find(e=>e[0]===id);const s=sessionFor(cur);const base=x?(s&&s.deload?Math.max(2,x[1]-1):x[1]):0;const rows=d.sets[id]||(d.sets[id]=[]);const want=Math.min(12,Math.max(base,rows.length)+1);while(rows.length<want)rows.push({});saveDay(cur);}
+  else if(a==='rest'){startTimer([{label:'Rest',secs:+b.dataset.secs||REST[b.dataset.ex]||75}]);return;}
+  else if(a==='work'){startTimer([{label:'Get set',secs:5},{label:b.dataset.ex?EX[b.dataset.ex].name:'Work',secs:+b.dataset.secs||WORK[b.dataset.ex]||30}]);return;}
+  else if(a==='idea'){d.idea=b.dataset.key!==undefined?b.dataset.key:val('idea-pick');saveDay(cur);}
+  else if(a==='ghsave'){
+    const r=val('gh-repo').replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'').replace(/\/+$/,''), t=val('gh-token');
+    if(!/^[^\/\s]+\/[^\/\s]+$/.test(r)){ghMsg='Enter the repository as username/repo-name.';render();return;}
+    gh.repo=r;if(t)gh.token=t;ghSha=null;gh.pub=false;ghSave();
+    if(!gh.token)ghMsg='Paste your GitHub token.';
+    else if(!me.profile||!me.profile.name)ghMsg='Saved. Set up your name above, then tap this again.';
+    else{ghMsg='Backing up.';ghVer++;ghCheckRepo();ghBackup().then(()=>{ghPeersAt=0;ghPeers();});}
+  }
+  else if(a==='ghrestore'){
+    if(!restoreArmed){restoreArmed=true;}
+    else{restoreArmed=false;ghMsg='Restoring.';ghRestore();}
+  }
+  else if(a==='swap'){const id=b.dataset.ex;d.swap[id]=!d.swap[id];saveDay(cur);}
+  else if(a==='done'){d.done=!d.done;saveDay(cur);}
+  else if(a==='saveprofile'){
+    const name=val('pf-name');if(!name){document.getElementById('pf-name').focus();return;}
+    me.profile=Object.assign({},me.profile||{},{name,plan:val('pf-plan'),target:num(val('pf-target'))||3,stake:Math.max(0,num(val('pf-stake'))),joined:(me.profile&&me.profile.joined)||today()});
+    saveProfile();
+  }
+  else if(a==='estimate'){const t=val('desc');if(!t){document.getElementById('desc').focus();return;}estimate(null,t);return;}
+  else if(a==='addpending'){d.meals.push({name:val('pm-name')||'Meal',kcal:num(val('pm-k')),p:num(val('pm-p')),c:num(val('pm-c')),f:num(val('pm-f'))});pending=null;saveDay(cur);}
+  else if(a==='discard'){pending=null;}
+  else if(a==='addmanual'){const k=num(val('mm-k'));if(!k){document.getElementById('mm-k').focus();return;}d.meals.push({name:val('mm-name')||'Meal',kcal:k,p:num(val('mm-p')),c:0,f:0});saveDay(cur);}
+  else if(a==='delmeal'){d.meals.splice(+b.dataset.i,1);saveDay(cur);}
+  else if(a==='calc'){
+    const c={sex:val('gc-sex'),age:num(val('gc-age')),w:num(val('gc-w')),ft:num(val('gc-ft')),inch:num(val('gc-in')),pace:num(val('gc-pace'))};
+    if(!c.age||!c.w||!c.ft){foodErr='Enter age, weight and height to calculate a goal.';render();return;}
+    const kg=c.w*0.4536, cm=(c.ft*12+c.inch)*2.54;
+    const bmr=10*kg+6.25*cm-5*c.age+(c.sex==='f'?-161:5), tdee=bmr*1.4;
+    const goal=Math.max(c.sex==='f'?1300:1700,Math.round((tdee-c.pace)/10)*10);
+    me.profile=Object.assign({},me.profile||{name:'',plan:'program',target:3,stake:20,joined:today()},{calc:c,kcalGoal:goal,proteinGoal:Math.min(200,Math.round(c.w*0.8/5)*5)});
+    foodErr='';saveProfile();
+  }
+  render();
+});
+const ERR={not_granted:'Claude is not allowed on this page for your account, so photo estimates are off. Add the meal by hand.',sampling_disabled:'Claude is not available for this account. Add the meal by hand.',rate_limited:'Too many requests or you hit a usage limit. Try again later.',session_expired:'Sign in to Claude again, then retry.',image_rejected:'That photo could not be read. Try a different one.',images_unavailable:'Photos are not available in this view. Describe the meal instead.',refused:'Claude could not estimate that. Try a clearer photo or describe the meal.',invalid_json:'The estimate came back garbled. Try again.'};
+async function estimate(file,text){
+  if(!sample)return;
+  pending={loading:true};foodErr='';render();
+  const prompt='You estimate nutrition for a food log. '+(file?'The attached image is a photo of a meal, a drink, or a nutrition label. ':'')+(text?'The person describes it as: "'+text.slice(0,500)+'". ':'')+
+    'Identify each food, estimate the portion as eaten, and estimate nutrition. Reply with only JSON in this shape: {"name": short meal name, "items": [{"name": string, "portion": string, "kcal": number, "protein": number, "carbs": number, "fat": number}], "confidence": "low" or "medium" or "high", "note": one short sentence on the biggest uncertainty}. Grams for protein, carbs, fat. If there is no food, reply {"name":"","items":[],"confidence":"low","note":"No food found."}';
+  try{
+    const r=await sample.json(prompt,file?{images:[file],cache:false}:{cache:false,modelTier:'quick'});
+    const items=Array.isArray(r&&r.items)?r.items.filter(i=>i&&typeof i==='object').map(i=>({name:String(i.name||'Item'),portion:String(i.portion||''),kcal:num(i.kcal),protein:num(i.protein),carbs:num(i.carbs),fat:num(i.fat)})):[];
+    if(!items.length){pending=null;foodErr=(r&&r.note?String(r.note)+' ':'')+'Nothing to add. Try another photo or describe the meal.';}
+    else pending={name:String((r&&r.name)||'Meal'),items,confidence:String((r&&r.confidence)||'medium'),note:String((r&&r.note)||''),
+      kcal:items.reduce((a,i)=>a+i.kcal,0),p:items.reduce((a,i)=>a+i.protein,0),c:items.reduce((a,i)=>a+i.carbs,0),f:items.reduce((a,i)=>a+i.fat,0)};
+  }catch(e){
+    pending=null;const c=e&&e.code;
+    if(c==='not_granted'||c==='sampling_disabled'||c==='not_declared'||c==='capability_disabled')sample=null;
+    if(c==='images_unavailable')canImg=false;
+    foodErr=ERR[c]||'The estimate did not finish. Try again in a moment.';
+  }
+  if(tab==='food')render();
+}
+/* ---------- GitHub backup ---------- */
+const GH_LS=LS+'-gh';
+const gh={repo:'',token:'',last:'',pending:false,pub:false};
+let ghSha=null, ghTimer=null, ghMsg='', ghBusy=false, ghPeersAt=0, restoreArmed=false, ghVer=0;
+try{Object.assign(gh,JSON.parse(localStorage.getItem(GH_LS)||'{}'));}catch(e){}
+function ghSave(){try{localStorage.setItem(GH_LS,JSON.stringify(gh));}catch(e){}}
+function ghOn(){return !!(gh.repo&&gh.token&&me.profile&&me.profile.name);}
+const slug=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'me';
+const ghPath=()=>'logs/'+slug(me.profile.name)+'.json';
+const b64e=s=>btoa(unescape(encodeURIComponent(s)));
+const b64d=s=>decodeURIComponent(escape(atob(String(s).replace(/\s/g,''))));
+const ghHead=()=>({Authorization:'Bearer '+gh.token,Accept:'application/vnd.github+json'});
+async function ghApi(path,opt){
+  const r=await fetch('https://api.github.com/repos/'+gh.repo+'/contents/'+path,Object.assign({headers:ghHead(),cache:'no-store'},opt||{}));
+  if(r.status===404)return null;
+  if(!r.ok)throw {status:r.status};
+  return r.json();
+}
+function ghErr(e){
+  const s=e&&e.status;
+  return s===401?'GitHub rejected the token. Paste it again and save.':s===403?'The token cannot write to that repository. Give it Contents: Read and write.':s===404?'Repository not found. Check the name and that the token includes it.':s?'GitHub error '+s+'. Try again.':'No connection. It will back up when you are online.';
+}
+async function ghCheckRepo(){
+  try{const r=await fetch('https://api.github.com/repos/'+gh.repo,{headers:ghHead(),cache:'no-store'});if(r.ok){const j=await r.json();gh.pub=j.private===false;ghSave();if(tab==='us')softRender();}}catch(e){}
+}
+function ghQueue(){ghVer++;gh.pending=true;ghSave();if(!ghOn())return;clearTimeout(ghTimer);ghTimer=setTimeout(ghBackup,15000);}
+async function ghBackup(){
+  if(!ghOn()||ghBusy||navigator.onLine===false)return;
+  ghBusy=true;const v=ghVer;
+  try{
+    const path=ghPath();
+    if(!ghSha){const c=await ghApi(path);ghSha=c?c.sha:null;}
+    const body={message:'Backup '+new Date().toISOString(),content:b64e(JSON.stringify({profile:me.profile,days:me.days,savedAt:new Date().toISOString()}))};
+    if(ghSha)body.sha=ghSha;
+    let res;
+    try{res=await ghApi(path,{method:'PUT',body:JSON.stringify(body)});}
+    catch(e){
+      if(e.status!==409&&e.status!==422)throw e;
+      const c=await ghApi(path);ghSha=c?c.sha:null;
+      if(ghSha)body.sha=ghSha;else delete body.sha;
+      res=await ghApi(path,{method:'PUT',body:JSON.stringify(body)});
+    }
+    if(!res)throw {status:404};
+    ghSha=res.content?res.content.sha:null;
+    gh.pending=ghVer!==v;gh.last=new Date().toISOString();ghSave();ghMsg='';
+    if(gh.pending){clearTimeout(ghTimer);ghTimer=setTimeout(ghBackup,15000);}
+  }catch(e){ghMsg=ghErr(e);}
+  ghBusy=false;
+  if(tab==='us')softRender();
+}
+async function ghRestore(){
+  try{
+    const c=await ghApi(ghPath());
+    if(!c)ghMsg='No backup found under the name '+me.profile.name+'.';
+    else{
+      const j=JSON.parse(b64d(c.content));ghSha=c.sha;
+      if(j.profile)me.profile=j.profile;
+      Object.keys(me.days).forEach(k=>delete me.days[k]);
+      Object.keys(j.days||{}).forEach(k=>{me.days[k]=norm(j.days[k]);});
+      cacheLocal();gh.pending=false;ghSave();
+      ghMsg='Restored the backup from '+(j.savedAt?new Date(j.savedAt).toLocaleString():'GitHub')+'.';
+    }
+  }catch(e){ghMsg=ghErr(e);}
+  render();
+}
+async function ghPeers(){
+  if(!ghOn()||navigator.onLine===false||Date.now()-ghPeersAt<60000)return;
+  ghPeersAt=Date.now();
+  try{
+    const list=await ghApi('logs');if(!Array.isArray(list))return;
+    const mine=slug(me.profile.name)+'.json';
+    for(const f of list){
+      if(f.name===mine||!/\.json$/.test(f.name))continue;
+      const c=await ghApi('logs/'+f.name);if(!c)continue;
+      const j=JSON.parse(b64d(c.content));
+      if(j&&j.profile){const days={};Object.keys(j.days||{}).forEach(k=>{days[k]=norm(j.days[k]);});others['gh-'+f.name]={profile:j.profile,days,sub:true};}
+    }
+    softRender();
+  }catch(e){}
+}
+function backupCard(){
+  const st=gh.last?'Last backup: '+new Date(gh.last).toLocaleString()+'.'+(gh.pending?' Newer changes are waiting to upload.':''):'Not set up yet. Your log is only on this phone.';
+  return `<section class="card"><h2>Backup to GitHub</h2><p class="mute">${esc(st)}</p>
+    ${gh.pub?'<p class="note">That repository is public, so anyone can read your log. Use a private repository instead.</p>':''}
+    <label class="f" for="gh-repo">Private repository<input id="gh-repo" value="${esc(gh.repo)}" placeholder="username/repo-name" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+    <label class="f" for="gh-token">Access token<input id="gh-token" type="password" placeholder="${gh.token?'Saved on this phone. Paste to replace':'Paste your token'}" autocomplete="off"></label>
+    <div class="row"><button class="primary" data-act="ghsave">Save and back up now</button><button data-act="ghrestore">${restoreArmed?'Tap again to replace the log on this phone':'Restore from backup'}</button></div>
+    ${ghMsg?`<p class="note">${esc(ghMsg)}</p>`:''}
+    <p class="mute">Backs up automatically about 15 seconds after each change when you are online. The token stays on this phone and is never uploaded.</p></section>`;
+}
+/* ---------- timers ---------- */
+let T=null, actx=null, beeps=[];
+function beepAt(delay,freq){
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==='suspended')actx.resume();
+    const o=actx.createOscillator(), g=actx.createGain(), t=actx.currentTime+delay;
+    o.frequency.value=freq;o.connect(g);g.connect(actx.destination);
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.35,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.6);
+    o.start(t);o.stop(t+0.65);beeps.push(o);
+  }catch(e){}
+}
+function clearBeeps(){beeps.forEach(o=>{try{o.stop();o.disconnect();}catch(e){}});beeps=[];}
+function scheduleBeeps(){
+  clearBeeps();if(!T)return;
+  let at=(T.end-Date.now())/1000;
+  for(let i=T.i;i<T.phases.length;i++){if(i>T.i)at+=T.phases[i].secs;beepAt(Math.max(0,at),i===T.phases.length-1?880:660);}
+}
+function startTimer(phases){
+  stopTimer();
+  T={phases,i:0,end:Date.now()+phases[0].secs*1000,iv:setInterval(tick,200)};
+  scheduleBeeps();
+  document.getElementById('timer').hidden=false;document.body.classList.add('timing');tick();
+}
+function stopTimer(){
+  if(T){clearInterval(T.iv);clearTimeout(T.hide);}
+  T=null;clearBeeps();
+  document.getElementById('timer').hidden=true;document.body.classList.remove('timing');
+}
+function tick(){
+  if(!T||T.over)return;
+  let left=(T.end-Date.now())/1000;
+  while(left<=0&&T.i<T.phases.length-1){T.i++;T.end+=T.phases[T.i].secs*1000;left=(T.end-Date.now())/1000;try{navigator.vibrate&&navigator.vibrate(150);}catch(e){}}
+  const L=document.getElementById('t-label'), V=document.getElementById('t-time');
+  if(left<=0){
+    T.over=true;clearInterval(T.iv);
+    L.textContent=T.phases[T.i].label==='Rest'?'Rest over':'Time';V.textContent='Go';
+    try{navigator.vibrate&&navigator.vibrate([200,100,200]);}catch(e){}
+    T.hide=setTimeout(stopTimer,5000);
+  }else{L.textContent=T.phases[T.i].label;V.textContent=mmss(Math.ceil(left));}
+}
+document.getElementById('t-stop').addEventListener('click',stopTimer);
+document.getElementById('t-add').addEventListener('click',()=>{if(!T||T.over)return;T.end+=15000;scheduleBeeps();tick();});
+window.addEventListener('online',()=>{setStatus();if(db)flush();else connect();if(gh.pending)ghBackup();});
+window.addEventListener('offline',setStatus);
+window.addEventListener('hashchange',route);
+loadLocal();route();connect();
+if(gh.pending&&ghOn())setTimeout(ghBackup,3000);
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist();}catch(e){}
+</script>
+</body>
+</html>
